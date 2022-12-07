@@ -1,0 +1,8 @@
+FROM library/postgres:13
+RUN apt-get update
+RUN apt-get install -y nano
+ENV POSTGRES_USER smart
+ENV POSTGRES_PASSWORD smart
+ENV POSTGRES_DB smart_db
+COPY ./.dockerfiles/init-db.sql /docker-entrypoint-initdb.d/
+WORKDIR /docker-entrypoint-initdb.d

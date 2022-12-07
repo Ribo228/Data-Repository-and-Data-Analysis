@@ -1,0 +1,35 @@
+version: '2.4'
+
+services:
+  api:
+    image: '${API_IMAGE}'
+    ports:
+      - '9000:9000'
+    environment:
+      - FLASK_ENV=production
+    restart: always
+
+  db:
+    image: '${DB_IMAGE}'
+    ports:
+      - '5432:5432'
+    volumes:
+      - '/smart/data:/var/lib/postgresql/data'
+    restart: always
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - '8080:8080'
+
+  grafana:
+    image: grafana/grafana
+    user: "0"
+    volumes:
+      - '/smart/grafana:/var/lib/grafana'
+    environment:
+      - "GF_SECURITY_ADMIN_USER=smart"
+      - "GF_SECURITY_ADMIN_PASSWORD=smart"
+    ports:
+      - 3000:3000

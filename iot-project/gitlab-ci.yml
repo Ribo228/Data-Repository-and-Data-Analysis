@@ -1,0 +1,43 @@
+variables:
+  REMOTE_HOST: deploy@project-vm-smart-iot-03 # change this xx to your number
+  REMOTE_DIR: smart
+
+stages:
+  - deploy
+
+deploy:
+  image: docker:latest
+  stage: deploy
+  services:
+    - docker:dind
+  script:
+    - cd iot-project
+    - export API_IMAGE="${CI_REGISTRY_IMAGE}/api"
+    - export DB_IMAGE="${CI_REGISTRY_IMAGE}/db"
+    - apk update && apk add rsync #openssh
+    - docker login -u gitlab-ci-token -p "${CI_JOB_TOKEN}" "${CI_REGISTRY}"
+    # Prepare SSH settings
+    - mkdir -p ~/.ssh && (umask  077 ; echo $DEPLOY_KEY_PRIVATE | base64 -d > ~/.ssh/id_rsa)
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+    # Build containers
+    - docker build -f .dockerfiles/apiProd -t "${API_IMAGE}" .
+    - docker build -f .dockerfiles/db -t "${DB_IMAGE}" .
+    # Push to remote
+    - docker push "${API_IMAGE}"
+    - docker push "${DB_IMAGE}"
+    # Prepare files for transfer
+    - mkdir "${REMOTE_DIR}"
+    - cp docker-compose.prod.yml "${REMOTE_DIR}/docker-compose.yml"
+    # Setup env
+    - echo "API_IMAGE=${API_IMAGE}" >> "${REMOTE_DIR}/.env"
+    - echo "DB_IMAGE=${DB_IMAGE}" >> "${REMOTE_DIR}/.env"
+    # Copy files to server
+    - rsync -av "${REMOTE_DIR}" "${REMOTE_HOST}:./"
+    # Set up Docker environment on the remote server
+    - ssh ${REMOTE_HOST} /bin/bash "
+      echo ${REMOTE_DIR};
+      cd ~/$REMOTE_DIR;
+      docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY;
+      docker-compose pull;
+      docker-compose up -d --force-recreate;
+      "

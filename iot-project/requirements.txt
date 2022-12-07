@@ -1,0 +1,7 @@
+psycopg2-binary
+Flask
+flask_restful
+flask-cors
+cryptography
+gunicorn[gevent]
+requests
